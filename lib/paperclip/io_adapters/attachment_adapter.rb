@@ -33,6 +33,13 @@ module Paperclip
       else
         begin
           source.copy_to_local_file(@style, destination.path)
+
+          # Some sources (like S3) writes to a temporary file first for multi-part downloads then moves
+          # it to the final destination path. This means our destination Tempfile reference is stale
+          # and reads will return an empty string. For compatibility, we need to copy the contents
+          # of the destination file to our current Tempfile instance.
+          IO.copy_stream(destination.path, destination)
+          destination.rewind
         rescue Errno::EACCES
           # clean up lingering tempfile if we cannot access source file
           destination.close(true)
